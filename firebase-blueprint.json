@@ -1,0 +1,366 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Authorized staff or principal user in the school system",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "uid": { "type": "string", "maxLength": 32 },
+        "mobile": { "type": "string", "maxLength": 16 },
+        "fullName": { "type": "string", "maxLength": 100 },
+        "email": { "type": "string", "maxLength": 100 },
+        "role": { "type": "string", "enum": ["principal", "staff"] },
+        "status": { "type": "string", "enum": ["active", "inactive", "archived"] },
+        "gender": { "type": "string", "enum": ["Male", "Female", "Other"] },
+        "designation": { "type": "string", "maxLength": 100 },
+        "createdAt": { "type": "string" },
+        "archivedAt": { "type": "string" },
+        "archivedBy": { "type": "string" }
+      },
+      "required": ["id", "uid", "mobile", "fullName", "role", "status"]
+    },
+    "SchoolProfile": {
+      "title": "SchoolProfile",
+      "description": "Official institutional profile and contact details",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 150 },
+        "code": { "type": "string", "maxLength": 32 },
+        "tagline": { "type": "string", "maxLength": 200 },
+        "address": { "type": "string", "maxLength": 250 },
+        "phone": { "type": "string", "maxLength": 20 },
+        "email": { "type": "string", "maxLength": 100 },
+        "principalName": { "type": "string", "maxLength": 100 },
+        "establishedYear": { "type": "string", "maxLength": 10 }
+      },
+      "required": ["name", "code", "principalName"]
+    },
+    "SchoolClass": {
+      "title": "SchoolClass",
+      "description": "Academic class or standard in the school",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 80 },
+        "sections": { "type": "array" },
+        "section": { "type": "string", "maxLength": 20 },
+        "room": { "type": "string", "maxLength": 60 },
+        "status": { "type": "string", "enum": ["active", "inactive", "archived"] },
+        "archivedAt": { "type": "string" },
+        "archivedBy": { "type": "string" }
+      },
+      "required": ["id", "name", "status"]
+    },
+    "Subject": {
+      "title": "Subject",
+      "description": "Academic course offered across grades",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 80 },
+        "code": { "type": "string", "maxLength": 32 },
+        "classIds": { "type": "array" },
+        "status": { "type": "string", "enum": ["active", "inactive", "archived"] },
+        "archivedAt": { "type": "string" },
+        "archivedBy": { "type": "string" }
+      },
+      "required": ["id", "name", "code", "status"]
+    },
+    "TeacherAssignment": {
+      "title": "TeacherAssignment",
+      "description": "Authorized teacher allocation to specific class, section, and subject",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "teacherId": { "type": "string", "maxLength": 128 },
+        "teacherName": { "type": "string", "maxLength": 100 },
+        "teacherUid": { "type": "string", "maxLength": 32 },
+        "classId": { "type": "string", "maxLength": 128 },
+        "className": { "type": "string", "maxLength": 80 },
+        "section": { "type": "string", "maxLength": 20 },
+        "subjectId": { "type": "string", "maxLength": 128 },
+        "subjectName": { "type": "string", "maxLength": 80 },
+        "assignedAt": { "type": "string" }
+      },
+      "required": ["id", "teacherId", "classId", "subjectId"]
+    },
+    "PeriodConfig": {
+      "title": "PeriodConfig",
+      "description": "Daily bell schedule and period time configuration",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "periodNumber": { "type": "number" },
+        "name": { "type": "string", "maxLength": 80 },
+        "startTime": { "type": "string", "maxLength": 10 },
+        "endTime": { "type": "string", "maxLength": 10 },
+        "type": { "type": "string", "enum": ["attendance", "regular", "break"] },
+        "status": { "type": "string", "enum": ["active", "inactive"] }
+      },
+      "required": ["id", "periodNumber", "name", "startTime", "endTime", "type", "status"]
+    },
+    "TimetableEntry": {
+      "title": "TimetableEntry",
+      "description": "Weekly schedule slot mapped by day, period, class, and teacher",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "dayOfWeek": { "type": "string", "enum": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] },
+        "periodId": { "type": "string", "maxLength": 128 },
+        "periodNumber": { "type": "number" },
+        "periodName": { "type": "string", "maxLength": 80 },
+        "startTime": { "type": "string", "maxLength": 10 },
+        "endTime": { "type": "string", "maxLength": 10 },
+        "classId": { "type": "string", "maxLength": 128 },
+        "className": { "type": "string", "maxLength": 80 },
+        "section": { "type": "string", "maxLength": 20 },
+        "subjectId": { "type": "string", "maxLength": 128 },
+        "subjectName": { "type": "string", "maxLength": 80 },
+        "teacherId": { "type": "string", "maxLength": 128 },
+        "teacherName": { "type": "string", "maxLength": 100 },
+        "room": { "type": "string", "maxLength": 60 }
+      },
+      "required": ["id", "dayOfWeek", "periodNumber", "classId", "subjectId", "teacherId"]
+    },
+    "SubstituteAssignment": {
+      "title": "SubstituteAssignment",
+      "description": "Temporary faculty substitution for a scheduled period",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 12 },
+        "periodNumber": { "type": "number" },
+        "classId": { "type": "string", "maxLength": 128 },
+        "className": { "type": "string", "maxLength": 80 },
+        "subjectId": { "type": "string", "maxLength": 128 },
+        "subjectName": { "type": "string", "maxLength": 80 },
+        "originalTeacherId": { "type": "string", "maxLength": 128 },
+        "originalTeacherName": { "type": "string", "maxLength": 100 },
+        "substituteTeacherId": { "type": "string", "maxLength": 128 },
+        "substituteTeacherName": { "type": "string", "maxLength": 100 },
+        "reason": { "type": "string", "maxLength": 200 }
+      },
+      "required": ["id", "date", "periodNumber", "classId", "substituteTeacherId"]
+    },
+    "Student": {
+      "title": "Student",
+      "description": "Enrolled student record with permanent student ID",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "rollNo": { "type": "string", "maxLength": 30 },
+        "fullName": { "type": "string", "maxLength": 100 },
+        "classId": { "type": "string", "maxLength": 128 },
+        "className": { "type": "string", "maxLength": 80 },
+        "section": { "type": "string", "maxLength": 20 },
+        "gender": { "type": "string", "enum": ["Male", "Female"] },
+        "guardianName": { "type": "string", "maxLength": 100 },
+        "guardianMobile": { "type": "string", "maxLength": 20 },
+        "status": { "type": "string", "enum": ["active", "inactive", "archived", "transferred"] },
+        "admissionDate": { "type": "string", "maxLength": 12 },
+        "admissionAcademicYearId": { "type": "string", "maxLength": 128 },
+        "currentAcademicYearId": { "type": "string", "maxLength": 128 },
+        "archivedAt": { "type": "string" },
+        "archivedBy": { "type": "string" }
+      },
+      "required": ["id", "rollNo", "fullName", "classId", "status"]
+    },
+    "StudentEnrollment": {
+      "title": "StudentEnrollment",
+      "description": "Student enrollment and promotion record per academic year",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "studentId": { "type": "string", "maxLength": 128 },
+        "studentName": { "type": "string", "maxLength": 100 },
+        "academicYearId": { "type": "string", "maxLength": 128 },
+        "academicYearName": { "type": "string", "maxLength": 60 },
+        "classId": { "type": "string", "maxLength": 128 },
+        "className": { "type": "string", "maxLength": 80 },
+        "section": { "type": "string", "maxLength": 20 },
+        "rollNo": { "type": "string", "maxLength": 30 },
+        "status": { "type": "string", "enum": ["active", "transferred", "completed"] },
+        "promotionType": { "type": "string", "enum": ["promoted", "repeated", "transferred", "admitted"] },
+        "previousClassId": { "type": "string", "maxLength": 128 },
+        "previousClassName": { "type": "string", "maxLength": 80 },
+        "previousSection": { "type": "string", "maxLength": 20 },
+        "previousRollNo": { "type": "string", "maxLength": 30 },
+        "remarks": { "type": "string", "maxLength": 250 },
+        "enrolledAt": { "type": "string" },
+        "enrolledBy": { "type": "string" }
+      },
+      "required": ["id", "studentId", "academicYearId", "classId", "rollNo", "status"]
+    },
+    "DailyClassAttendance": {
+      "title": "DailyClassAttendance",
+      "description": "Official daily attendance record for a class roster",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "academicYearId": { "type": "string", "maxLength": 128 },
+        "academicYearName": { "type": "string", "maxLength": 60 },
+        "date": { "type": "string", "maxLength": 12 },
+        "classId": { "type": "string", "maxLength": 128 },
+        "className": { "type": "string", "maxLength": 80 },
+        "section": { "type": "string", "maxLength": 20 },
+        "records": { "type": "array" },
+        "totalStudents": { "type": "number" },
+        "presentCount": { "type": "number" },
+        "absentCount": { "type": "number" },
+        "leaveCount": { "type": "number" },
+        "markedBy": { "type": "object" },
+        "markedAt": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "isLocked": { "type": "boolean" },
+        "lockedBy": { "type": "string" },
+        "lockedAt": { "type": "string" }
+      },
+      "required": ["id", "date", "classId", "records"]
+    },
+    "DailyStaffAttendance": {
+      "title": "DailyStaffAttendance",
+      "description": "Daily teacher presence, leave, and absence register marked by Principal",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 12 },
+        "records": { "type": "array" },
+        "totalStaff": { "type": "number" },
+        "presentCount": { "type": "number" },
+        "absentCount": { "type": "number" },
+        "onLeaveCount": { "type": "number" },
+        "markedBy": { "type": "string", "maxLength": 100 },
+        "markedAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "date", "records"]
+    },
+    "AcademicYear": {
+      "title": "AcademicYear",
+      "description": "Academic session configuration and lifecycle",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 60 },
+        "startDate": { "type": "string", "maxLength": 12 },
+        "endDate": { "type": "string", "maxLength": 12 },
+        "status": { "type": "string", "enum": ["active", "upcoming", "closed"] },
+        "createdAt": { "type": "string" },
+        "activatedAt": { "type": "string" },
+        "closedAt": { "type": "string" },
+        "closedBy": { "type": "string" },
+        "notes": { "type": "string", "maxLength": 250 }
+      },
+      "required": ["id", "name", "startDate", "endDate", "status"]
+    },
+    "SchoolCalendarConfig": {
+      "title": "SchoolCalendarConfig",
+      "description": "Annual academic calendar, working days, and holiday schedules",
+      "type": "object",
+      "properties": {
+        "academicYear": { "type": "string", "maxLength": 60 },
+        "workingDays": { "type": "array" },
+        "weeklyOffDays": { "type": "array" },
+        "holidays": { "type": "array" }
+      },
+      "required": ["academicYear", "workingDays", "weeklyOffDays"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Tamper-evident system activity and operational log",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "timestamp": { "type": "string" },
+        "userId": { "type": "string", "maxLength": 128 },
+        "userName": { "type": "string", "maxLength": 100 },
+        "userRole": { "type": "string", "enum": ["principal", "staff"] },
+        "action": { "type": "string", "maxLength": 100 },
+        "details": { "type": "string", "maxLength": 500 },
+        "ipAddress": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "timestamp", "userId", "action", "details"]
+    },
+    "SystemStatus": {
+      "title": "SystemStatus",
+      "description": "System readiness, initialization status, and session heartbeat",
+      "type": "object",
+      "properties": {
+        "status": { "type": "string", "maxLength": 50 },
+        "version": { "type": "string", "maxLength": 20 },
+        "appName": { "type": "string", "maxLength": 150 },
+        "principalUid": { "type": "string", "maxLength": 32 },
+        "databaseReady": { "type": "boolean" },
+        "lastVerifiedAt": { "type": "string" }
+      },
+      "required": ["status"]
+    }
+  },
+  "firestore": {
+    "/school_profile/{docId}": {
+      "schema": "SchoolProfile",
+      "description": "General profile information for the institution"
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Authorized staff and principal credentials and roles"
+    },
+    "/classes/{classId}": {
+      "schema": "SchoolClass",
+      "description": "Configured standards, sections, and classroom allocations"
+    },
+    "/subjects/{subjectId}": {
+      "schema": "Subject",
+      "description": "Curriculum subjects offered across classes"
+    },
+    "/teacher_assignments/{assignmentId}": {
+      "schema": "TeacherAssignment",
+      "description": "Faculty class and subject allocation mappings"
+    },
+    "/periods/{periodId}": {
+      "schema": "PeriodConfig",
+      "description": "Daily bell schedule and period time configurations"
+    },
+    "/timetable/{slotId}": {
+      "schema": "TimetableEntry",
+      "description": "Weekly timetable period schedules"
+    },
+    "/substitutes/{subId}": {
+      "schema": "SubstituteAssignment",
+      "description": "Temporary faculty substitute coverage"
+    },
+    "/students/{studentId}": {
+      "schema": "Student",
+      "description": "Enrolled student records with permanent student IDs"
+    },
+    "/student_enrollments/{enrollmentId}": {
+      "schema": "StudentEnrollment",
+      "description": "Student academic session enrollment and promotion history"
+    },
+    "/student_attendance/{attendanceId}": {
+      "schema": "DailyClassAttendance",
+      "description": "Official daily student attendance records"
+    },
+    "/staff_attendance/{docId}": {
+      "schema": "DailyStaffAttendance",
+      "description": "Daily teacher presence, leave, and absence records"
+    },
+    "/academic_years/{yearId}": {
+      "schema": "AcademicYear",
+      "description": "Annual academic sessions"
+    },
+    "/calendar_config/{docId}": {
+      "schema": "SchoolCalendarConfig",
+      "description": "Institutional working days, off days, and holiday schedule"
+    },
+    "/audit_logs/{logId}": {
+      "schema": "AuditLog",
+      "description": "Immutable operational audit trails"
+    },
+    "/system_status/{docId}": {
+      "schema": "SystemStatus",
+      "description": "System heartbeat, connectivity, and database initialization metadata"
+    }
+  }
+}

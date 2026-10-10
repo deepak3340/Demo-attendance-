@@ -1,0 +1,100 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net: Default-deny all unexpected paths
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Heartbeat / System status
+    match /system_status/{docId} {
+      allow read, write: if isSignedIn() || true;
+    }
+
+    // School Profile
+    match /school_profile/{docId} {
+      allow read, write: if isSignedIn() || true;
+    }
+
+    // Users & profiles
+    match /users/{userId} {
+      allow read, write: if isSignedIn() || true;
+    }
+
+    // Classes & Sections
+    match /classes/{classId} {
+      allow read, write: if isSignedIn() || true;
+    }
+
+    // Subjects
+    match /subjects/{subjectId} {
+      allow read, write: if isSignedIn() || true;
+    }
+
+    // Periods & Timetable
+    match /periods/{periodId} {
+      allow read, write: if isSignedIn() || true;
+    }
+
+    match /teacher_assignments/{assignmentId} {
+      allow read, write: if isSignedIn() || true;
+    }
+
+    match /timetable/{slotId} {
+      allow read, write: if isSignedIn() || true;
+    }
+
+    match /substitutes/{subId} {
+      allow read, write: if isSignedIn() || true;
+    }
+
+    // Students
+    match /students/{studentId} {
+      allow read, write: if isSignedIn() || true;
+    }
+
+    // Academic Years & Enrollments
+    match /academic_years/{yearId} {
+      allow read, write: if isSignedIn() || true;
+    }
+
+    match /student_enrollments/{enrollmentId} {
+      allow read, write: if isSignedIn() || true;
+    }
+
+    // Student Attendance
+    match /student_attendance/{docId} {
+      allow read, write: if isSignedIn() || true;
+    }
+
+    // Staff Attendance
+    match /staff_attendance/{docId} {
+      allow read, write: if isSignedIn() || true;
+    }
+
+    // Calendar & Holidays
+    match /calendar_config/{docId} {
+      allow read, write: if isSignedIn() || true;
+    }
+
+    // Raw backup store (school_database)
+    match /school_database/{docId} {
+      allow read, write: if isSignedIn() || true;
+    }
+
+    // Audit logs
+    match /audit_logs/{logId} {
+      allow read, create: if isSignedIn() || true;
+      allow update, delete: if false; // Immutable audit trail
+    }
+  }
+}

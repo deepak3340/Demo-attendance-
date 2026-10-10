@@ -1,0 +1,6 @@
+{
+  "name": "Attendance Management System",
+  "description": "Real-time school attendance management platform with Principal and Staff portals, live Firebase Firestore database synchronization, user authentication, and attendance logging.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
