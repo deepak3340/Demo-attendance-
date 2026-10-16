@@ -27,6 +27,7 @@ import { SecuritySessionsModal } from './components/common/SecuritySessionsModal
 import { ArchivedRecordsModal } from './components/common/ArchivedRecordsModal';
 import { InactivityWarningModal } from './components/common/InactivityWarningModal';
 import { LogoutConfirmModal } from './components/common/LogoutConfirmModal';
+import { FirebaseRealtimeModal } from './components/common/FirebaseRealtimeModal';
 
 const AppContent: React.FC = () => {
   const {
@@ -45,6 +46,7 @@ const AppContent: React.FC = () => {
   const [isSecuritySessionsModalOpen, setIsSecuritySessionsModalOpen] = useState(false);
   const [isArchivedModalOpen, setIsArchivedModalOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const [isCloudModalOpen, setIsCloudModalOpen] = useState(false);
 
   // View navigation params (e.g. { date, classId })
   const [viewParams, setViewParams] = useState<any>(null);
@@ -164,6 +166,7 @@ const AppContent: React.FC = () => {
           activeViewTitle={getActiveViewTitle()}
           onOpenProfile={() => setIsProfileModalOpen(true)}
           onOpenLogoutModal={() => setIsLogoutModalOpen(true)}
+          onOpenCloudModal={() => setIsCloudModalOpen(true)}
         />
 
         {/* Content Area */}
@@ -174,6 +177,7 @@ const AppContent: React.FC = () => {
                 <PrincipalDashboard
                   onNavigate={handleNavigate}
                   onOpenArchivedModal={() => setIsArchivedModalOpen(true)}
+                  onOpenCloudModal={() => setIsCloudModalOpen(true)}
                 />
               )}
               {activeView === 'academic-years' && <AcademicYearPromotion />}
@@ -264,6 +268,11 @@ const AppContent: React.FC = () => {
       <LogoutConfirmModal
         isOpen={isLogoutModalOpen}
         onClose={() => setIsLogoutModalOpen(false)}
+      />
+
+      <FirebaseRealtimeModal
+        isOpen={isCloudModalOpen}
+        onClose={() => setIsCloudModalOpen(false)}
       />
     </div>
   );

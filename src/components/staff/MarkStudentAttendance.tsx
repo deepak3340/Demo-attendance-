@@ -8,7 +8,8 @@ import {
   AlertCircle,
   Lock,
   Save,
-  Radio
+  Radio,
+  Clock
 } from 'lucide-react';
 
 interface MarkStudentAttendanceProps {
@@ -223,6 +224,7 @@ export const MarkStudentAttendance: React.FC<MarkStudentAttendanceProps> = ({
   const targetClass = authorizedClasses.find(c => c.id === selectedClassId);
   const presentCount = Object.values(attendanceDraft).filter(v => v.status === 'present').length;
   const absentCount = Object.values(attendanceDraft).filter(v => v.status === 'absent').length;
+  const leaveCount = Object.values(attendanceDraft).filter(v => v.status === 'leave').length;
 
   if (authorizedClasses.length === 0) {
     return (
@@ -348,6 +350,9 @@ export const MarkStudentAttendance: React.FC<MarkStudentAttendanceProps> = ({
           <span className="px-3 py-1 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold">
             {absentCount} Absent
           </span>
+          <span className="px-3 py-1 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold">
+            {leaveCount} Leave
+          </span>
         </div>
       </div>
 
@@ -424,7 +429,7 @@ export const MarkStudentAttendance: React.FC<MarkStudentAttendanceProps> = ({
                             type="button"
                             disabled={isLocked}
                             onClick={() => handleToggleStatus(student.id, 'present')}
-                            className={`flex items-center gap-1 px-3.5 py-1.5 rounded-lg font-bold text-xs transition-all cursor-pointer ${
+                            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg font-bold text-xs transition-all cursor-pointer ${
                               status === 'present'
                                 ? 'bg-emerald-600 text-white shadow-sm'
                                 : 'text-slate-600 hover:text-slate-900'
@@ -437,7 +442,7 @@ export const MarkStudentAttendance: React.FC<MarkStudentAttendanceProps> = ({
                             type="button"
                             disabled={isLocked}
                             onClick={() => handleToggleStatus(student.id, 'absent')}
-                            className={`flex items-center gap-1 px-3.5 py-1.5 rounded-lg font-bold text-xs transition-all cursor-pointer ${
+                            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg font-bold text-xs transition-all cursor-pointer ${
                               status === 'absent'
                                 ? 'bg-rose-600 text-white shadow-sm'
                                 : 'text-slate-600 hover:text-slate-900'
@@ -445,6 +450,19 @@ export const MarkStudentAttendance: React.FC<MarkStudentAttendanceProps> = ({
                           >
                             <XCircle className="w-3.5 h-3.5" />
                             <span>Absent</span>
+                          </button>
+                          <button
+                            type="button"
+                            disabled={isLocked}
+                            onClick={() => handleToggleStatus(student.id, 'leave')}
+                            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg font-bold text-xs transition-all cursor-pointer ${
+                              status === 'leave'
+                                ? 'bg-amber-600 text-white shadow-sm'
+                                : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                          >
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>Leave</span>
                           </button>
                         </div>
                       </td>
@@ -477,6 +495,8 @@ export const MarkStudentAttendance: React.FC<MarkStudentAttendanceProps> = ({
                 className={`p-4 rounded-3xl border transition-all ${
                   status === 'present'
                     ? 'bg-white border-emerald-200 shadow-sm'
+                    : status === 'leave'
+                    ? 'bg-white border-amber-200 shadow-sm'
                     : 'bg-white border-rose-200 shadow-sm'
                 }`}
               >
@@ -493,38 +513,53 @@ export const MarkStudentAttendance: React.FC<MarkStudentAttendanceProps> = ({
                     className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
                       status === 'present'
                         ? 'bg-emerald-100 text-emerald-800'
+                        : status === 'leave'
+                        ? 'bg-amber-100 text-amber-800'
                         : 'bg-rose-100 text-rose-800'
                     }`}
                   >
-                    {status === 'present' ? 'Present' : 'Absent'}
+                    {status === 'present' ? 'Present' : status === 'leave' ? 'Leave' : 'Absent'}
                   </span>
                 </div>
-                <div className="grid grid-cols-2 gap-2 mb-2.5">
+                <div className="grid grid-cols-3 gap-1.5 mb-2.5">
                   <button
                     type="button"
                     disabled={isLocked}
                     onClick={() => handleToggleStatus(student.id, 'present')}
-                    className={`py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    className={`py-2 px-1 rounded-xl font-bold text-xs flex items-center justify-center gap-1 transition-all cursor-pointer ${
                       status === 'present'
                         ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20 ring-2 ring-emerald-600/30'
                         : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                     }`}
                   >
-                    <CheckCircle2 className="w-4 h-4" />
+                    <CheckCircle2 className="w-3.5 h-3.5" />
                     <span>Present</span>
                   </button>
                   <button
                     type="button"
                     disabled={isLocked}
                     onClick={() => handleToggleStatus(student.id, 'absent')}
-                    className={`py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    className={`py-2 px-1 rounded-xl font-bold text-xs flex items-center justify-center gap-1 transition-all cursor-pointer ${
                       status === 'absent'
                         ? 'bg-rose-600 text-white shadow-md shadow-rose-600/20 ring-2 ring-rose-600/30'
                         : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                     }`}
                   >
-                    <XCircle className="w-4 h-4" />
+                    <XCircle className="w-3.5 h-3.5" />
                     <span>Absent</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isLocked}
+                    onClick={() => handleToggleStatus(student.id, 'leave')}
+                    className={`py-2 px-1 rounded-xl font-bold text-xs flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                      status === 'leave'
+                        ? 'bg-amber-600 text-white shadow-md shadow-amber-600/20 ring-2 ring-amber-600/30'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                    }`}
+                  >
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>Leave</span>
                   </button>
                 </div>
                 <input

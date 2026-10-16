@@ -1,100 +1,140 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Global Safety Net: Default-deny all unexpected paths
-    match /{document=**} {
-      allow read, write: if false;
+    // Helper function for validating docId length and safety
+    function isValidDocId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128;
     }
 
-    // Helper functions
-    function isSignedIn() {
-      return request.auth != null;
+    // Role and status validators
+    function isValidRole(role) {
+      return role is string && (role == 'principal' || role == 'staff');
     }
 
-    function isValidId(id) {
-      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    function isValidStatus(status) {
+      return status is string && (status == 'active' || status == 'inactive' || status == 'archived' || status == 'transferred');
     }
 
-    // Heartbeat / System status
+    // System Status & Heartbeats
     match /system_status/{docId} {
-      allow read, write: if isSignedIn() || true;
+      allow get, write: if isValidDocId(docId);
+      allow list: if true;
     }
 
     // School Profile
     match /school_profile/{docId} {
-      allow read, write: if isSignedIn() || true;
+      allow get, write: if isValidDocId(docId);
+      allow list: if true;
     }
 
-    // Users & profiles
+    // Users Collection (Principal & Staff profiles)
+    // Enforces document ID validity and ensures roles are strictly 'principal' or 'staff'
     match /users/{userId} {
-      allow read, write: if isSignedIn() || true;
+      allow get: if isValidDocId(userId);
+      allow list: if true;
+      allow create, update: if isValidDocId(userId)
+        && (!('role' in request.resource.data) || isValidRole(request.resource.data.role))
+        && (!('status' in request.resource.data) || isValidStatus(request.resource.data.status));
+      allow delete: if isValidDocId(userId) && userId != 'usr_prin_deepak'; // Principal account is protected from deletion
     }
 
-    // Classes & Sections
+    // Classes and Sections
     match /classes/{classId} {
-      allow read, write: if isSignedIn() || true;
+      allow get: if isValidDocId(classId);
+      allow list: if true;
+      allow create, update: if isValidDocId(classId)
+        && (!('name' in request.resource.data) || (request.resource.data.name is string && request.resource.data.name.size() > 0));
+      allow delete: if isValidDocId(classId);
     }
 
     // Subjects
     match /subjects/{subjectId} {
-      allow read, write: if isSignedIn() || true;
+      allow get: if isValidDocId(subjectId);
+      allow list: if true;
+      allow create, update: if isValidDocId(subjectId)
+        && (!('name' in request.resource.data) || (request.resource.data.name is string && request.resource.data.name.size() > 0));
+      allow delete: if isValidDocId(subjectId);
     }
 
-    // Periods & Timetable
+    // Periods
     match /periods/{periodId} {
-      allow read, write: if isSignedIn() || true;
+      allow get, write: if isValidDocId(periodId);
+      allow list: if true;
     }
 
+    // Teacher Assignments
     match /teacher_assignments/{assignmentId} {
-      allow read, write: if isSignedIn() || true;
+      allow get, write: if isValidDocId(assignmentId);
+      allow list: if true;
     }
 
+    // Timetable
     match /timetable/{slotId} {
-      allow read, write: if isSignedIn() || true;
+      allow get, write: if isValidDocId(slotId);
+      allow list: if true;
     }
 
+    // Substitutes
     match /substitutes/{subId} {
-      allow read, write: if isSignedIn() || true;
+      allow get, write: if isValidDocId(subId);
+      allow list: if true;
     }
 
     // Students
     match /students/{studentId} {
-      allow read, write: if isSignedIn() || true;
+      allow get: if isValidDocId(studentId);
+      allow list: if true;
+      allow create, update: if isValidDocId(studentId)
+        && (!('fullName' in request.resource.data) || (request.resource.data.fullName is string && request.resource.data.fullName.size() > 0));
+      allow delete: if isValidDocId(studentId);
     }
 
-    // Academic Years & Enrollments
+    // Academic Years
     match /academic_years/{yearId} {
-      allow read, write: if isSignedIn() || true;
+      allow get, write: if isValidDocId(yearId);
+      allow list: if true;
     }
 
+    // Student Enrollments
     match /student_enrollments/{enrollmentId} {
-      allow read, write: if isSignedIn() || true;
+      allow get, write: if isValidDocId(enrollmentId);
+      allow list: if true;
     }
 
-    // Student Attendance
+    // Student Daily Attendance
     match /student_attendance/{docId} {
-      allow read, write: if isSignedIn() || true;
+      allow get: if isValidDocId(docId);
+      allow list: if true;
+      allow create, update: if isValidDocId(docId)
+        && (!('date' in request.resource.data) || (request.resource.data.date is string && request.resource.data.date.size() > 0));
+      allow delete: if isValidDocId(docId);
     }
 
-    // Staff Attendance
+    // Staff Daily Attendance
     match /staff_attendance/{docId} {
-      allow read, write: if isSignedIn() || true;
+      allow get: if isValidDocId(docId);
+      allow list: if true;
+      allow create, update: if isValidDocId(docId)
+        && (!('date' in request.resource.data) || (request.resource.data.date is string && request.resource.data.date.size() > 0));
+      allow delete: if isValidDocId(docId);
     }
 
-    // Calendar & Holidays
+    // Calendar Config
     match /calendar_config/{docId} {
-      allow read, write: if isSignedIn() || true;
+      allow get, write: if isValidDocId(docId);
+      allow list: if true;
     }
 
-    // Raw backup store (school_database)
-    match /school_database/{docId} {
-      allow read, write: if isSignedIn() || true;
-    }
-
-    // Audit logs
+    // Audit Logs - Strictly Immutable (Append-only)
     match /audit_logs/{logId} {
-      allow read, create: if isSignedIn() || true;
-      allow update, delete: if false; // Immutable audit trail
+      allow get, create: if isValidDocId(logId);
+      allow list: if true;
+      allow update, delete: if false; // Append-only audit trail
+    }
+
+    // Default Deny Rule
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

@@ -141,11 +141,12 @@ export const StudentAttendanceView: React.FC<StudentAttendanceViewProps> = ({
     if (!isEditing) return;
     setEditedRecords((prev) => {
       const cur = prev[studentId]?.status || 'present';
+      const nextStatus: AttendanceStatus = cur === 'present' ? 'absent' : (cur === 'absent' ? 'leave' : 'present');
       return {
         ...prev,
         [studentId]: {
           ...prev[studentId],
-          status: cur === 'present' ? 'absent' : 'present',
+          status: nextStatus,
         },
       };
     });
@@ -398,6 +399,11 @@ export const StudentAttendanceView: React.FC<StudentAttendanceViewProps> = ({
                   <span className="text-rose-700 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
                     {attendanceRecord.absentCount} Absent
                   </span>
+                  {attendanceRecord.leaveCount !== undefined && attendanceRecord.leaveCount > 0 && (
+                    <span className="text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                      {attendanceRecord.leaveCount} Leave
+                    </span>
+                  )}
                 </div>
               )}
             </div>
@@ -451,16 +457,21 @@ export const StudentAttendanceView: React.FC<StudentAttendanceViewProps> = ({
                                   className={`px-3 py-1 rounded-full text-xs font-bold cursor-pointer transition-all ${
                                     currentStatus === 'present'
                                       ? 'bg-emerald-600 text-white shadow-xs'
+                                      : currentStatus === 'leave'
+                                      ? 'bg-amber-600 text-white shadow-xs'
                                       : 'bg-rose-600 text-white shadow-xs'
                                   }`}
+                                  title="Click to toggle status (Present / Absent / Leave)"
                                 >
-                                  {currentStatus === 'present' ? 'PRESENT' : 'ABSENT'}
+                                  {currentStatus === 'present' ? 'PRESENT' : currentStatus === 'leave' ? 'LEAVE' : 'ABSENT'}
                                 </button>
                               ) : (
                                 <span
                                   className={`inline-flex px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
                                     rec.status === 'present'
                                       ? 'bg-emerald-100 text-emerald-800'
+                                      : rec.status === 'leave'
+                                      ? 'bg-amber-100 text-amber-800'
                                       : 'bg-rose-100 text-rose-800'
                                   }`}
                                 >

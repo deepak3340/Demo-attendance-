@@ -18,6 +18,8 @@ import {
   Eye,
   EyeOff
 } from 'lucide-react';
+import { evaluatePassword } from '../../utils/passwordValidation';
+import { PasswordRequirements } from '../common/PasswordRequirements';
 
 export const StaffManagement: React.FC = () => {
   const { currentUser } = useAuth();
@@ -58,7 +60,8 @@ export const StaffManagement: React.FC = () => {
   const [email, setEmail] = useState('');
   const [designation, setDesignation] = useState('');
   const [gender, setGender] = useState<'Male' | 'Female' | 'Other'>('Male');
-  const [password, setPassword] = useState('staff123');
+  const [password, setPassword] = useState('');
+  const [showInitialPassword, setShowInitialPassword] = useState(false);
   const [formError, setFormError] = useState('');
   const [formSuccess, setFormSuccess] = useState('');
 
@@ -78,6 +81,10 @@ export const StaffManagement: React.FC = () => {
     return unsub;
   }, []);
 
+  const generateRandomPassword = () => {
+    return `Staff@${Math.floor(1000 + Math.random() * 9000)}`;
+  };
+
   const handleOpenAdd = () => {
     setEditingStaff(null);
     setFullName('');
@@ -85,7 +92,8 @@ export const StaffManagement: React.FC = () => {
     setEmail('');
     setDesignation('Subject Teacher');
     setGender('Male');
-    setPassword('staff123');
+    setPassword('');
+    setShowInitialPassword(false);
     setFormError('');
     setFormSuccess('');
     setIsModalOpen(true);
@@ -138,6 +146,11 @@ export const StaffManagement: React.FC = () => {
       }
       setFormSuccess('Staff details updated successfully.');
     } else {
+      const evalRes = evaluatePassword(password);
+      if (!evalRes.isValid) {
+        setFormError(evalRes.errors[0] || 'Password must meet security criteria (min 8 chars, uppercase, lowercase, numbers, symbols).');
+        return;
+      }
       const res = storage.addStaff(
         {
           fullName: fullName.trim(),
@@ -145,7 +158,7 @@ export const StaffManagement: React.FC = () => {
           email: email.trim() || `${cleanMobile}@school.edu`,
           designation,
           gender,
-          password: password || 'staff123',
+          password: password || 'Staff@1234',
           status: 'active',
         },
         currentUser
@@ -197,8 +210,9 @@ export const StaffManagement: React.FC = () => {
   const handleExecutePasswordReset = (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser || !resetModalStaff) return;
-    if (newPassword.length < 6) {
-      setResetMsg('Password must be at least 6 characters.');
+    const evalRes = evaluatePassword(newPassword);
+    if (!evalRes.isValid) {
+      setResetMsg(evalRes.errors[0] || 'Password must be at least 8 characters with uppercase, lowercase, numbers, and symbols.');
       return;
     }
     storage.resetStaffPassword(resetModalStaff.id, newPassword, currentUser);
@@ -612,13 +626,25 @@ export const StaffManagement: React.FC = () => {
                     <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
                       Initial Password
                     </label>
-                    <input
-                      type="text"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm text-slate-800 font-mono focus:border-indigo-600 outline-none"
-                    />
+                    <div className="relative">
+                      <input
+                        type={showInitialPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Enter secure initial password (min 8 characters)"
+                        required
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm text-slate-800 font-mono focus:border-indigo-600 outline-none pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowInitialPassword(!showInitialPassword)}
+                        className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                        aria-label={showInitialPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showInitialPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    <PasswordRequirements password={password} />
                     <p className="text-[11px] text-slate-400 mt-1">
                       Faculty member can update this password in their personal profile after signing in.
                     </p>
@@ -687,6 +713,7 @@ export const StaffManagement: React.FC = () => {
                     type={showNewPassword ? 'text' : 'password'}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="e.g. Staff@1234"
                     required
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-800 focus:border-indigo-600 outline-none pr-9 font-mono"
                   />
@@ -698,6 +725,7 @@ export const StaffManagement: React.FC = () => {
                     {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+                <PasswordRequirements password={newPassword} />
               </div>
 
               <div className="pt-2 flex justify-end gap-2">

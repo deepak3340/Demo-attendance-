@@ -36,6 +36,7 @@ export const INITIAL_USERS: User[] = [
     email: "Deepak.lohar9826@gmail.com",
     role: "principal",
     password: "Deepak@123@",
+    passwordHash: "sha256$94c0ce439bdb1e74865980508f713ddc$c206585dafa50d5a983afc61f101cdbcaef68f6de7df80a3e8586e4768cc6304",
     status: "active",
     gender: "Male",
     designation: "Principal & School Administrator",

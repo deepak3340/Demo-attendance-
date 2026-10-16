@@ -1,6 +1,7 @@
 import { db, isFirebaseInitialized, ensureFirebaseAuth } from './firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { INITIAL_SCHOOL, INITIAL_USERS, INITIAL_ACADEMIC_YEARS, INITIAL_CALENDAR } from '../data/initialData';
+import { hashPassword, DEFAULT_PRINCIPAL_PASSWORD } from '../utils/passwordHash';
 
 export interface DatabaseInitResult {
   success: boolean;
@@ -63,17 +64,40 @@ export async function initializeFirestoreDatabaseSafely(): Promise<DatabaseInitR
     await ensureFirebaseAuth();
     result.isLiveConnected = true;
 
-    // 1. Verify or initialize Principal Account (MUST PRESERVE EXISTING)
+    // 1. Verify and store Principal Account in Firestore users collection (Preserve Principal & Staff accounts)
     try {
       const principalDocRef = doc(db, 'users', 'usr_prin_deepak');
       const principalSnap = await getDoc(principalDocRef);
+      const principalUser = INITIAL_USERS[0];
+      const { password, ...safePrincipal } = principalUser;
+      const principalPass = password || DEFAULT_PRINCIPAL_PASSWORD;
+      const hashedPass = await hashPassword(principalPass);
+
       if (principalSnap.exists()) {
-        result.principalPreserved = true;
-      } else {
-        const principalUser = INITIAL_USERS[0];
-        const { password, ...safePrincipal } = principalUser;
+        const existingData = principalSnap.data() || {};
+        // Preserve existing user fields, ensure passwordHash is set, and ensure plaintext password is not retained
+        const { password: _legacyPlain, ...cleanExisting } = existingData;
+        const currentHash = cleanExisting.passwordHash || hashedPass;
+
         await setDoc(principalDocRef, {
           ...safePrincipal,
+          ...cleanExisting,
+          passwordHash: currentHash,
+          id: 'usr_prin_deepak',
+          uid: 'PRIN01',
+          role: 'principal',
+          status: 'active',
+          _syncedAt: new Date().toISOString()
+        }, { merge: true });
+        result.principalPreserved = true;
+      } else {
+        await setDoc(principalDocRef, {
+          ...safePrincipal,
+          passwordHash: hashedPass,
+          id: 'usr_prin_deepak',
+          uid: 'PRIN01',
+          role: 'principal',
+          status: 'active',
           _syncedAt: new Date().toISOString()
         }, { merge: true });
         result.principalPreserved = true;

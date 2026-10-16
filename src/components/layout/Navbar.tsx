@@ -15,6 +15,7 @@ interface NavbarProps {
   activeViewTitle: string;
   onOpenProfile: () => void;
   onOpenLogoutModal?: () => void;
+  onOpenCloudModal?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -22,6 +23,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeViewTitle,
   onOpenProfile,
   onOpenLogoutModal,
+  onOpenCloudModal,
 }) => {
   const { currentUser, logout } = useAuth();
   const school = storage.getSchool();
@@ -59,6 +61,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <Building2 className="w-3 h-3 mr-1" />
                 {school.name}
               </span>
+              {onOpenCloudModal && (
+                <button
+                  type="button"
+                  onClick={onOpenCloudModal}
+                  className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors cursor-pointer shrink-0"
+                  title="View Live Firebase Firestore Sync Status"
+                >
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>Cloud Active</span>
+                </button>
+              )}
             </div>
             <p className="text-[11px] sm:text-xs text-slate-500 hidden sm:block truncate">
               {currentUser.role === 'principal' ? 'Principal Administrator Portal' : 'Faculty Attendance Portal'}

@@ -11,6 +11,7 @@
         "fullName": { "type": "string", "maxLength": 100 },
         "email": { "type": "string", "maxLength": 100 },
         "role": { "type": "string", "enum": ["principal", "staff"] },
+        "passwordHash": { "type": "string", "maxLength": 256 },
         "status": { "type": "string", "enum": ["active", "inactive", "archived"] },
         "gender": { "type": "string", "enum": ["Male", "Female", "Other"] },
         "designation": { "type": "string", "maxLength": 100 },

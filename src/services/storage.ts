@@ -41,8 +41,11 @@ import {
   setupRealtimeListeners,
   validateFirestoreConnection,
   isFirebaseInitialized,
-  clearAllCloudCollectionsExceptPrincipal
+  clearAllCloudCollectionsExceptPrincipal,
+  syncPrincipalToFirestore
 } from './firebase';
+import { initializeFirestoreDatabaseSafely } from './dbInit';
+import { hashPassword, DEFAULT_PRINCIPAL_PASSWORD } from '../utils/passwordHash';
 
 export const STORAGE_KEYS = {
   SCHOOL: 'ams_school',
@@ -97,7 +100,7 @@ class StorageService {
     }
   }
 
-  private setItem<T>(key: string, value: T): void {
+  public setItem<T>(key: string, value: T): void {
     try {
       localStorage.setItem(key, JSON.stringify(value));
       this.notifyListeners();
@@ -118,7 +121,16 @@ class StorageService {
         for (const user of value) {
           if (user && user.id) {
             const { password, ...safeUser } = user;
-            await saveDocumentToFirestore('users', user.id, safeUser);
+            let passwordHash = user.passwordHash;
+            if (!passwordHash && password) {
+              passwordHash = await hashPassword(password);
+            } else if (!passwordHash && user.id === 'usr_prin_deepak') {
+              passwordHash = await hashPassword(DEFAULT_PRINCIPAL_PASSWORD);
+            }
+            await saveDocumentToFirestore('users', user.id, {
+              ...safeUser,
+              ...(passwordHash ? { passwordHash } : {})
+            });
           }
         }
       } else if (key === STORAGE_KEYS.CLASSES && Array.isArray(value)) {
@@ -197,18 +209,16 @@ class StorageService {
     }
   }
 
-  // Initializer
+  // Initializer - Non-destructive: preserves existing database records
   public initialize(): void {
-    const hasCleanedToPrincipalOnly = localStorage.getItem('ams_principal_only_clean_v1');
-    if (!hasCleanedToPrincipalOnly) {
-      this.resetAllToCleanSlate();
-      localStorage.setItem('ams_principal_only_clean_v1', 'true');
+    const rawSchool = localStorage.getItem(STORAGE_KEYS.SCHOOL);
+    if (!rawSchool) {
+      this.setItem(STORAGE_KEYS.SCHOOL, INITIAL_SCHOOL);
     }
 
     const rawUsers = localStorage.getItem(STORAGE_KEYS.USERS);
-    const rawSchool = localStorage.getItem(STORAGE_KEYS.SCHOOL);
-    if (!rawUsers || !rawSchool) {
-      this.resetAllToCleanSlate();
+    if (!rawUsers) {
+      this.setItem(STORAGE_KEYS.USERS, INITIAL_USERS);
     }
 
     const rawAcademicYears = localStorage.getItem(STORAGE_KEYS.ACADEMIC_YEARS);
@@ -272,7 +282,15 @@ class StorageService {
   public initRealtimeSync(): void {
     if (!isFirebaseInitialized) return;
 
-    validateFirestoreConnection().catch(() => {});
+    validateFirestoreConnection()
+      .then(connected => {
+        if (connected) {
+          initializeFirestoreDatabaseSafely().catch(err => {
+            console.warn('Background database initialization notice:', err);
+          });
+        }
+      })
+      .catch(() => {});
 
     setupRealtimeListeners((collectionName, items) => {
       try {
@@ -315,15 +333,18 @@ class StorageService {
           }
         } else if (collectionName === 'users') {
           const current = this.getItem<User[]>(STORAGE_KEYS.USERS, INITIAL_USERS);
-          // Preserve local password if cloud document stripped it
+          // Preserve local password and passwordHash
           const passwordMap = new Map<string, string>();
+          const passwordHashMap = new Map<string, string>();
           current.forEach(u => {
             if (u.password) passwordMap.set(u.id, u.password);
+            if (u.passwordHash) passwordHashMap.set(u.id, u.passwordHash);
           });
           const principalAccount = current.find(u => u.id === 'usr_prin_deepak') || INITIAL_USERS[0];
           const enriched = items.map((u: any) => ({
             ...u,
-            password: passwordMap.get(u.id) || u.password || 'Deepak@123@'
+            password: passwordMap.get(u.id) || u.password || (u.id === 'usr_prin_deepak' ? DEFAULT_PRINCIPAL_PASSWORD : ''),
+            passwordHash: u.passwordHash || passwordHashMap.get(u.id) || ''
           }));
           const hasPrincipal = enriched.some((u: any) => u.id === 'usr_prin_deepak');
           const finalUsers = hasPrincipal ? enriched : [principalAccount, ...enriched];
@@ -455,25 +476,49 @@ class StorageService {
       return { success: false, error: 'A staff account with this mobile number already exists.' };
     }
     const uid = data.uid || this.generateStaffUID();
+    const plainPass = data.password || 'Staff@1234';
     const newStaff: User = {
       ...data,
       id: `user-staff-${Date.now()}`,
       uid,
       role: 'staff',
-      password: data.password || 'staff123',
+      password: plainPass,
       status: data.status || 'active',
       createdAt: new Date().toISOString(),
     };
+    hashPassword(plainPass).then(h => {
+      newStaff.passwordHash = h;
+      this.setItem(STORAGE_KEYS.USERS, users);
+    }).catch(() => {});
     users.push(newStaff);
     this.setItem(STORAGE_KEYS.USERS, users);
     this.logAction(actor, 'STAFF_CREATED', `Created staff member ${newStaff.fullName} (UID: ${newStaff.uid})`);
     return { success: true, staff: newStaff };
   }
 
+  public updatePrincipal(updates: Partial<User>, actor: User): { success: boolean; principal?: User; error?: string } {
+    const users = this.getUsers();
+    const index = users.findIndex(u => u.id === 'usr_prin_deepak');
+    if (index === -1) return { success: false, error: 'Principal account not found.' };
+
+    delete updates.id;
+    delete updates.role;
+    delete updates.uid;
+    users[index] = { ...users[index], ...updates };
+    this.setItem(STORAGE_KEYS.USERS, users);
+    syncPrincipalToFirestore(users[index]).catch(() => {});
+    this.logAction(actor, 'PRINCIPAL_UPDATED', `Updated Principal profile details`);
+    return { success: true, principal: users[index] };
+  }
+
   public updateStaff(id: string, updates: Partial<User>, actor: User): { success: boolean; staff?: User; error?: string } {
     const users = this.getUsers();
     const index = users.findIndex(u => u.id === id);
     if (index === -1) return { success: false, error: 'Staff member not found.' };
+
+    if (users[index].id === 'usr_prin_deepak' || users[index].role === 'principal') {
+      return { success: false, error: 'Cannot modify Principal credentials via Staff Management.' };
+    }
 
     if (updates.mobile && updates.mobile !== users[index].mobile) {
       const mobileExists = users.some(u => u.id !== id && u.mobile === updates.mobile && u.status !== 'archived');
@@ -493,6 +538,9 @@ class StorageService {
     const users = this.getUsers();
     const staff = users.find(u => u.id === id);
     if (!staff) return { success: false, error: 'Staff not found.' };
+    if (staff.id === 'usr_prin_deepak' || staff.role === 'principal') {
+      return { success: false, error: 'The Principal account cannot be deactivated.' };
+    }
     staff.status = staff.status === 'active' ? 'inactive' : 'active';
     this.setItem(STORAGE_KEYS.USERS, users);
     this.logAction(actor, 'STAFF_STATUS_TOGGLED', `Changed ${staff.fullName} (UID: ${staff.uid}) status to ${staff.status}`);
@@ -503,6 +551,9 @@ class StorageService {
     const users = this.getUsers();
     const staff = users.find(u => u.id === id);
     if (!staff) return { success: false, error: 'Staff not found.' };
+    if (staff.id === 'usr_prin_deepak' || staff.role === 'principal') {
+      return { success: false, error: 'The Principal account cannot be archived.' };
+    }
     staff.status = 'archived';
     staff.archivedAt = new Date().toISOString();
     staff.archivedBy = actor.fullName;
@@ -527,6 +578,9 @@ class StorageService {
     const users = this.getUsers();
     const staff = users.find(u => u.id === id);
     if (!staff) return { success: false, error: 'Staff not found.' };
+    if (staff.id === 'usr_prin_deepak' || staff.role === 'principal') {
+      return { success: false, error: 'The Principal account cannot be deleted.' };
+    }
     const remaining = users.filter(u => u.id !== id);
     this.setItem(STORAGE_KEYS.USERS, remaining);
     deleteDocumentFromFirestore('users', id).catch(() => {});
@@ -538,7 +592,14 @@ class StorageService {
     const users = this.getUsers();
     const staff = users.find(u => u.id === id);
     if (!staff) return { success: false, error: 'Staff not found.' };
+    if (staff.id === 'usr_prin_deepak' || staff.role === 'principal') {
+      return { success: false, error: 'Cannot reset Principal password through staff password reset.' };
+    }
     staff.password = newPass;
+    hashPassword(newPass).then(h => {
+      staff.passwordHash = h;
+      this.setItem(STORAGE_KEYS.USERS, users);
+    }).catch(() => {});
     this.setItem(STORAGE_KEYS.USERS, users);
     this.logAction(actor, 'STAFF_PASSWORD_RESET', `Password reset for ${staff.fullName} (UID: ${staff.uid}) by ${actor.fullName}`);
     return { success: true };
@@ -1347,9 +1408,13 @@ class StorageService {
     }
     if (actor.role === 'staff') {
       const assignments = this.getAssignmentsForTeacher(actor.id);
-      const isAssigned = assignments.some(a => a.classId === data.classId);
+      const isAssigned = assignments.some(a => {
+        if (a.classId !== data.classId) return false;
+        if (a.section && data.section && a.section !== data.section) return false;
+        return true;
+      });
       if (!isAssigned) {
-        return { success: false, error: 'Unauthorized: You are not assigned to mark attendance for this class.' };
+        return { success: false, error: 'Unauthorized: You are not assigned to mark attendance for this class and section.' };
       }
     }
     const all = this.getAllStudentAttendance();
@@ -1362,6 +1427,7 @@ class StorageService {
     }
     const presentCount = data.records.filter(r => r.status === 'present').length;
     const absentCount = data.records.filter(r => r.status === 'absent').length;
+    const leaveCount = data.records.filter(r => r.status === 'leave').length;
     const docId = targetSection
       ? `${data.date}_${data.classId}_${targetSection}`
       : `${data.date}_${data.classId}`;
@@ -1378,6 +1444,7 @@ class StorageService {
       totalStudents: data.records.length,
       presentCount,
       absentCount,
+      leaveCount,
       markedBy: {
         userId: actor.id,
         userName: actor.fullName,
@@ -1399,11 +1466,8 @@ class StorageService {
     // Explicit realtime write to Firestore
     saveDocumentToFirestore('student_attendance', docId, record).catch(() => {});
 
-    this.logAction(
-      actor,
-      'STUDENT_ATTENDANCE_MARKED',
-      `Marked attendance for ${data.className}${targetSection ? ' (Sec ' + targetSection + ')' : ''} on ${data.date}: ${presentCount} Present, ${absentCount} Absent.`
-    );
+    const logDetails = `Marked attendance for ${data.className}${targetSection ? ' (Sec ' + targetSection + ')' : ''} on ${data.date}: ${presentCount} Present, ${absentCount} Absent${leaveCount > 0 ? ', ' + leaveCount + ' Leave' : ''}.`;
+    this.logAction(actor, 'STUDENT_ATTENDANCE_MARKED', logDetails);
     return { success: true, attendance: record };
   }
 

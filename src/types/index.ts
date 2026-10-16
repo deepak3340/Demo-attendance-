@@ -8,6 +8,7 @@ export interface User {
   email: string;
   role: UserRole;
   password?: string;
+  passwordHash?: string;
   status: 'active' | 'inactive' | 'archived';
   gender?: 'Male' | 'Female' | 'Other';
   designation?: string;

@@ -15,12 +15,16 @@ import {
   Eye,
   Briefcase,
   Archive,
-  CalendarRange
+  CalendarRange,
+  CheckCircle2,
+  Layers,
+  GraduationCap
 } from 'lucide-react';
 
 interface PrincipalDashboardProps {
   onNavigate: (view: string, params?: any) => void;
   onOpenArchivedModal?: () => void;
+  onOpenCloudModal?: () => void;
 }
 
 export const PrincipalDashboard: React.FC<PrincipalDashboardProps> = ({

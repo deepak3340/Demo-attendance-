@@ -23,16 +23,20 @@ import {
   User as FirebaseUser
 } from 'firebase/auth';
 import { RealtimeSyncStatus } from '../types';
+import firebaseAppletConfig from '../../firebase-applet-config.json';
+import { hashPassword, DEFAULT_PRINCIPAL_PASSWORD } from '../utils/passwordHash';
 
 export const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyD5ACSo67rj2Ijik7umM3qHi8TpAOugVUQ",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "fir-attendance-62fd9.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "fir-attendance-62fd9",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "fir-attendance-62fd9.firebasestorage.app",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "577579656961",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:577579656961:web:3740c9469639becd0f1d00",
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-YLM18B3SQK"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || firebaseAppletConfig.apiKey || "AIzaSyD5ACSo67rj2Ijik7umM3qHi8TpAOugVUQ",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || firebaseAppletConfig.authDomain || "fir-attendance-62fd9.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || firebaseAppletConfig.projectId || "fir-attendance-62fd9",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || firebaseAppletConfig.storageBucket || "fir-attendance-62fd9.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || firebaseAppletConfig.messagingSenderId || "577579656961",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || firebaseAppletConfig.appId || "1:577579656961:web:bb48e32b3b54fb3f0f1d00",
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || firebaseAppletConfig.measurementId || ""
 };
+
+export const firestoreDatabaseId = firebaseAppletConfig.firestoreDatabaseId || "(default)";
 
 let app: FirebaseApp;
 let db: Firestore;
@@ -41,6 +45,7 @@ let isFirebaseInitialized = false;
 
 try {
   app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+  // Connect directly to the primary (default) Firestore database
   db = getFirestore(app);
   auth = getAuth(app);
   isFirebaseInitialized = true;
@@ -132,8 +137,7 @@ export async function ensureFirebaseAuth(): Promise<FirebaseUser | null> {
   try {
     const cred = await signInAnonymously(auth);
     return cred.user;
-  } catch (err) {
-    console.warn('Anonymous auth initialization note:', err);
+  } catch {
     return null;
   }
 }
@@ -144,7 +148,6 @@ export async function ensureFirebaseAuth(): Promise<FirebaseUser | null> {
 export async function validateFirestoreConnection(): Promise<boolean> {
   if (!isFirebaseInitialized || !db) return false;
   try {
-    await ensureFirebaseAuth();
     const testDoc = doc(db, 'system_status', 'ping');
     await setDoc(testDoc, {
       lastPing: new Date().toISOString(),
@@ -177,7 +180,6 @@ export async function saveDocumentToFirestore(collectionName: string, docId: str
   syncStatusState.isSyncing = true;
   notifySyncStatus();
   try {
-    await ensureFirebaseAuth();
     const docRef = doc(db, collectionName, docId);
     await setDoc(docRef, {
       ...data,
@@ -205,7 +207,6 @@ export async function saveDocumentToFirestore(collectionName: string, docId: str
 export async function getDocumentFromFirestore<T>(collectionName: string, docId: string): Promise<T | null> {
   if (!isFirebaseInitialized || !db) return null;
   try {
-    await ensureFirebaseAuth();
     const docRef = doc(db, collectionName, docId);
     const snap = await getDoc(docRef);
     if (snap.exists()) {
@@ -226,7 +227,6 @@ export async function deleteDocumentFromFirestore(collectionName: string, docId:
   syncStatusState.isSyncing = true;
   notifySyncStatus();
   try {
-    await ensureFirebaseAuth();
     const docRef = doc(db, collectionName, docId);
     await deleteDoc(docRef);
 
@@ -244,12 +244,47 @@ export async function deleteDocumentFromFirestore(collectionName: string, docId:
 }
 
 /**
+ * Ensures the Principal account is stored directly in Firestore users collection
+ */
+export async function syncPrincipalToFirestore(principalData: any): Promise<boolean> {
+  if (!isFirebaseInitialized || !db) return false;
+  try {
+    const { password, ...safeUser } = principalData;
+    let passwordHash = principalData.passwordHash;
+    if (!passwordHash && password) {
+      passwordHash = await hashPassword(password);
+    } else if (!passwordHash) {
+      passwordHash = await hashPassword(DEFAULT_PRINCIPAL_PASSWORD);
+    }
+
+    const docRef = doc(db, 'users', 'usr_prin_deepak');
+    await setDoc(docRef, {
+      ...safeUser,
+      id: 'usr_prin_deepak',
+      uid: safeUser.uid || 'PRIN01',
+      role: 'principal',
+      fullName: safeUser.fullName || 'Mr Deepak Gehlot',
+      mobile: safeUser.mobile || '9826613340',
+      email: safeUser.email || 'Deepak.lohar9826@gmail.com',
+      gender: safeUser.gender || 'Male',
+      designation: safeUser.designation || 'Principal & School Administrator',
+      passwordHash,
+      status: 'active',
+      _syncedAt: new Date().toISOString()
+    }, { merge: true });
+    return true;
+  } catch (err) {
+    console.warn('Error syncing principal to Firestore:', err);
+    return false;
+  }
+}
+
+/**
  * Purges old seeded cloud collections while preserving Principal account and School profile
  */
 export async function clearAllCloudCollectionsExceptPrincipal(): Promise<void> {
   if (!isFirebaseInitialized || !db) return;
   try {
-    await ensureFirebaseAuth();
     const collectionsToClear = [
       'classes',
       'subjects',
@@ -274,7 +309,7 @@ export async function clearAllCloudCollectionsExceptPrincipal(): Promise<void> {
       }
     }
 
-    // Retain only Principal in users collection
+    // Retain ONLY Principal in users collection
     try {
       const usersRef = collection(db, 'users');
       const usersSnap = await getDocs(usersRef);
